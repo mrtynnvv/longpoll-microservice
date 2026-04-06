@@ -34,25 +34,29 @@ export class CalorieBotService {
       return this.getFormatHint();
     }
 
-    const food = this.parseFoodCommand(text);
-    if (food) {
-      return this.handleFoodCommand(food.title, food.calories);
-    }
-
-    return this.getFormatHint();
+    const entry = this.parseEntry(text);
+    return this.handleFoodCommand(entry.title, entry.calories);
   }
 
-  private parseFoodCommand(text: string) {
-    const match = text.match(/^(\d{1,5})\s+(.+)$/u);
+  private parseEntry(text: string) {
+    const normalized = text.trim().replace(/\s+/g, ' ');
+    const match = normalized.match(/^(\d{1,5})(?:\s+(.+))?$/u);
+
     if (!match) {
-      return null;
+      return {
+        title: normalized,
+        calories: 0,
+      };
     }
 
     const calories = Number(match[1]);
-    const title = match[2].trim().replace(/\s+/g, ' ');
+    const title = match[2]?.trim();
 
-    if (!title || !Number.isInteger(calories) || calories < 1 || calories > 20000) {
-      return null;
+    if (!Number.isInteger(calories) || calories < 0 || calories > 20000 || !title) {
+      return {
+        title: normalized,
+        calories: 0,
+      };
     }
 
     return { title, calories };
@@ -192,7 +196,7 @@ export class CalorieBotService {
   }
 
   private getFormatHint() {
-    return 'Нужен формат: 100 брокколи с капустой';
+    return 'Напиши либо "100 брокколи с капустой", либо просто событие, например "сделал 100 отжиманий"';
   }
 
   private getDefaultTimezone() {

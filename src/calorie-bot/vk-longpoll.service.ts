@@ -148,7 +148,7 @@ export class VkLongPollService implements OnModuleInit, OnModuleDestroy {
     if (!text) {
       await this.vkApi.sendMessage(
         message.peer_id,
-        'Нужен формат: 100 брокколи с капустой',
+        'Напиши либо "100 брокколи с капустой", либо просто событие, например "сделал 100 отжиманий"',
       );
       return;
     }
