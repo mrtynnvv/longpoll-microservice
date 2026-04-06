@@ -26,7 +26,7 @@
 1. Перейти в папку проекта:
 
    ```bash
-   cd php-test/examples/vk-calorie-bot
+   cd longpoll-microservice
    ```
 
 2. Создать `.env` на основе примера.
@@ -57,6 +57,27 @@
    npm run start:dev
    ```
 
+## PM2
+
+Для запуска на VPS:
+
+```bash
+cd longpoll-microservice
+npm install
+npm run prisma:generate
+npm run build
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+Полезные команды:
+
+```bash
+pm2 logs longpoll-microservice
+pm2 restart longpoll-microservice
+pm2 status
+```
+
 ## Что нужно включить в VK
 
 - Сообщения сообщества
@@ -68,3 +89,16 @@
 ## Где лежит база
 
 По умолчанию бот смотрит в [external-db/app.sqlite](/Users/mrtynnvv/dev/me/external-db/app.sqlite) через `DATABASE_URL="file:../../../../external-db/app.sqlite"`.
+
+Для VPS, если папки лежат рядом так:
+
+- `/root/longpoll-microservice`
+- `/root/external-db/app.sqlite`
+
+то серверный путь будет короче:
+
+```env
+DATABASE_URL="file:../../external-db/app.sqlite"
+```
+
+Именно этот путь уже зашит в PM2-конфиг [ecosystem.config.cjs](/Users/mrtynnvv/dev/me/longpoll-microservice/ecosystem.config.cjs).
