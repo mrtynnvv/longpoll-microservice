@@ -1,6 +1,5 @@
 node_modules
 dist
-.env
 prisma/*.sqlite
 *.sqlite-shm
 *.sqlite-wal
