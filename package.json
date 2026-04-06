@@ -1,0 +1,30 @@
+{
+  "name": "vk-calorie-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal VK bot for tracking a daily calorie limit",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main",
+    "start:dev": "ts-node -r tsconfig-paths/register src/main.ts",
+    "prisma:generate": "prisma generate",
+    "db:init": "node scripts/init-db.mjs",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.1",
+    "@nestjs/platform-express": "^11.0.1",
+    "@prisma/client": "^6.17.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "prisma": "^6.17.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.3"
+  }
+}
