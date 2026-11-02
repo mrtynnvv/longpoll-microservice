@@ -10,7 +10,7 @@ type VkApiEnvelope<T> =
       };
     };
 
-type LongPollServer = {
+export type LongPollServer = {
   key: string;
   server: string;
   ts: string;
@@ -18,52 +18,48 @@ type LongPollServer = {
 
 @Injectable()
 export class VkApiService {
-  constructor(private readonly configService: ConfigService) {}
+  private readonly groupId: number;
+  private readonly groupToken: string;
+  private readonly apiVersion: string;
 
-  isConfigured() {
-    return Boolean(this.getGroupToken() && this.getGroupId());
+  constructor(configService: ConfigService) {
+    this.groupId = Number(configService.get<string>('VK_GROUP_ID')) || 0;
+    this.groupToken = configService.get<string>('VK_GROUP_TOKEN')?.trim() || '';
+    this.apiVersion = configService.get<string>('VK_API_VERSION') || '5.199';
   }
 
-  getMissingConfigKeys() {
-    const missing: string[] = [];
-
-    if (!this.getGroupId()) {
-      missing.push('VK_GROUP_ID');
-    }
-
-    if (!this.getGroupToken()) {
-      missing.push('VK_GROUP_TOKEN');
-    }
-
-    return missing;
+  isConfigured() {
+    return Boolean(this.groupToken && this.groupId);
   }
 
   async sendMessage(peerId: number, message: string) {
     await this.call('messages.send', {
       peer_id: peerId,
       message,
-      random_id: this.getRandomId(),
+      random_id: Math.floor(Math.random() * 2_147_483_647),
     });
   }
 
   async getLongPollServer() {
     return this.call<LongPollServer>('groups.getLongPollServer', {
-      group_id: this.getGroupId(),
+      group_id: this.groupId,
     });
   }
 
-  async call<T>(
+  private async call<T>(
     method: string,
-    params: Record<string, number | string | undefined>,
+    params: Record<string, number | string>,
   ): Promise<T> {
+    if (!this.groupToken) {
+      throw new Error('VK_GROUP_TOKEN is not configured');
+    }
+
     const body = new URLSearchParams();
-    body.set('access_token', this.getRequiredGroupToken());
-    body.set('v', this.getApiVersion());
+    body.set('access_token', this.groupToken);
+    body.set('v', this.apiVersion);
 
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null && value !== '') {
-        body.set(key, String(value));
-      }
+      body.set(key, String(value));
     }
 
     const response = await fetch(`https://api.vk.com/method/${method}`, {
@@ -86,31 +82,5 @@ export class VkApiService {
     }
 
     return payload.response;
-  }
-
-  private getRandomId() {
-    return Math.floor(Math.random() * 2_147_483_647);
-  }
-
-  private getGroupId() {
-    const raw = this.configService.get<string>('VK_GROUP_ID');
-    return raw ? Number(raw) : 0;
-  }
-
-  private getGroupToken() {
-    return this.configService.get<string>('VK_GROUP_TOKEN')?.trim() || '';
-  }
-
-  private getRequiredGroupToken() {
-    const token = this.getGroupToken();
-    if (!token) {
-      throw new Error('VK_GROUP_TOKEN is not configured');
-    }
-
-    return token;
-  }
-
-  private getApiVersion() {
-    return this.configService.get<string>('VK_API_VERSION') || '5.199';
   }
 }

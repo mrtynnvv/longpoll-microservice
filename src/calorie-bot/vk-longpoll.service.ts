@@ -6,13 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { CalorieBotService } from './calorie-bot.service';
-import { VkApiService } from './vk-api.service';
-
-type LongPollServer = {
-  key: string;
-  server: string;
-  ts: string;
-};
+import { VkApiService, type LongPollServer } from './vk-api.service';
 
 type LongPollResponse = {
   ts?: string;
@@ -33,6 +27,7 @@ type LongPollResponse = {
 @Injectable()
 export class VkLongPollService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(VkLongPollService.name);
+  private readonly allowedUserId = process.env.VK_ALLOWED_USER_ID?.trim() || '';
   private stopped = false;
   private server: LongPollServer | null = null;
 
@@ -44,14 +39,12 @@ export class VkLongPollService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     if (!this.vkApi.isConfigured()) {
       this.logger.warn(
-        `VK long poll is disabled. Missing env vars: ${this.vkApi
-          .getMissingConfigKeys()
-          .join(', ')}`,
+        'VK long poll is disabled: VK_GROUP_ID or VK_GROUP_TOKEN is missing.',
       );
       return;
     }
 
-    if (!this.getAllowedUserId()) {
+    if (!this.allowedUserId) {
       this.logger.warn(
         'VK_ALLOWED_USER_ID is empty. Any VK user who can message the bot will write into the configured app account.',
       );
@@ -87,8 +80,12 @@ export class VkLongPollService implements OnModuleInit, OnModuleDestroy {
         }
 
         const payload = (await response.json()) as LongPollResponse;
-        const shouldContinue = this.handleLongPollFailure(payload);
-        if (shouldContinue) {
+        if (payload.failed) {
+          if (payload.failed === 1 && payload.ts) {
+            this.server.ts = payload.ts;
+          } else {
+            this.server = null;
+          }
           continue;
         }
 
@@ -105,27 +102,15 @@ export class VkLongPollService implements OnModuleInit, OnModuleDestroy {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(`Long poll loop failed: ${message}`);
         this.server = null;
-        await this.sleep(backoffMs);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
         backoffMs = Math.min(backoffMs * 2, 15000);
       }
     }
   }
 
-  private handleLongPollFailure(payload: LongPollResponse) {
-    if (!payload.failed) {
-      return false;
-    }
-
-    if (payload.failed === 1 && payload.ts && this.server) {
-      this.server.ts = payload.ts;
-      return true;
-    }
-
-    this.server = null;
-    return true;
-  }
-
-  private async handleUpdate(update: NonNullable<LongPollResponse['updates']>[number]) {
+  private async handleUpdate(
+    update: NonNullable<LongPollResponse['updates']>[number],
+  ) {
     if (update.type !== 'message_new') {
       return;
     }
@@ -139,43 +124,22 @@ export class VkLongPollService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const allowedUserId = this.getAllowedUserId();
-    if (allowedUserId && String(message.from_id) !== allowedUserId) {
+    if (this.allowedUserId && String(message.from_id) !== this.allowedUserId) {
       return;
     }
 
     const text = message.text?.trim();
     if (!text) {
-      await this.vkApi.sendMessage(
-        message.peer_id,
-        'Напиши либо "100 брокколи с капустой", либо просто событие, например "сделал 100 отжиманий"',
-      );
       return;
     }
 
     try {
-      const reply = await this.calorieBot.handleIncomingMessage({
-        text,
-      });
+      const reply = await this.calorieBot.handleIncomingMessage(text);
 
       await this.vkApi.sendMessage(message.peer_id, reply);
     } catch (error) {
       const details = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to process message: ${details}`);
-      await this.vkApi.sendMessage(
-        message.peer_id,
-        'Что-то сломалось на моей стороне. Попробуй еще раз через пару секунд.',
-      );
     }
-  }
-
-  private sleep(ms: number) {
-    return new Promise((resolve) => {
-      setTimeout(resolve, ms);
-    });
-  }
-
-  private getAllowedUserId() {
-    return process.env.VK_ALLOWED_USER_ID?.trim() || '';
   }
 }

@@ -1,104 +1,16 @@
-# VK Calorie Bot
+<p align="center">
+  <i>Веб-приложение <a href="https://calorielly.ru">calorielly.ru</a> </i>
+</p>
+<h1 align="center">Calorielly VK Bot</h1>
 
-Минимальный single-user бот на NestJS + Prisma + SQLite для вашей основной базы Calorielly.
+## 💡 Архитектура и стек
 
-Что делает:
-
-- принимает сообщение строго в формате `100 брокколи с капустой`
-- записывает `100` в `calories`
-- записывает `брокколи с капустой` в `title`
-- считает, сколько калорий осталось на сегодня
-
-Бот привязан к одному аккаунту приложения через `APP_USER_ID`.
-По умолчанию в `.env.example` уже подставлен самый большой аккаунт из текущей базы:
-
-- `cmgrx68p30000yguffpaiqzt4`
-
-## Формат сообщения
-
-- `100 брокколи с капустой`
-- `540 гречка с курицей`
-
-Других команд у бота нет.
-
-## Запуск
-
-1. Перейти в папку проекта:
-
-   ```bash
-   cd longpoll-microservice
-   ```
-
-2. Создать `.env` на основе примера.
-
-3. Заполнить:
-
-- `VK_GROUP_ID`
-- `VK_GROUP_TOKEN`
-- `VK_ALLOWED_USER_ID`
-
-`VK_ALLOWED_USER_ID` это ваш личный VK user id. Если оставить пустым, любой, кто сможет написать боту, будет добавлять еду в ваш аккаунт.
-
-4. Установить зависимости:
-
-   ```bash
-   npm install
-   ```
-
-5. Сгенерировать Prisma client:
-
-   ```bash
-   npm run prisma:generate
-   ```
-
-6. Запустить бота:
-
-   ```bash
-   npm run start:dev
-   ```
-
-## PM2
-
-Для запуска на VPS:
-
-```bash
-cd longpoll-microservice
-npm install
-npm run prisma:generate
-npm run build
-pm2 start ecosystem.config.cjs
-pm2 save
-```
-
-Полезные команды:
-
-```bash
-pm2 logs longpoll-microservice
-pm2 restart longpoll-microservice
-pm2 status
-```
-
-## Что нужно включить в VK
-
-- Сообщения сообщества
-- Токен сообщества с доступом к сообщениям
-- Bots Long Poll и событие `message_new`
-
-После этого бот начнет читать входящие сообщения через Long Poll без публичного webhook URL.
-
-## Где лежит база
-
-По умолчанию бот смотрит в [external-db/app.sqlite](/Users/mrtynnvv/dev/me/external-db/app.sqlite) через `DATABASE_URL="file:../../../../external-db/app.sqlite"`.
-
-Для VPS, если папки лежат рядом так:
-
-- `/root/longpoll-microservice`
-- `/root/external-db/app.sqlite`
-
-то серверный путь будет короче:
-
-```env
-DATABASE_URL="file:../../external-db/app.sqlite"
-```
-
-Именно этот путь уже зашит в PM2-конфиг [ecosystem.config.cjs](/Users/mrtynnvv/dev/me/longpoll-microservice/ecosystem.config.cjs).
+- Строгая типизация: TypeScript, строгий режим в `tsconfig.json`
+- Архитектура микросервиса: NestJS 11, модули `CalorieBotModule` и `PrismaModule`, конфигурация через `@nestjs/config`
+- Интеграция с VK: Bots Long Poll API, восстановление подключения, фильтрация отправителя через `VK_ALLOWED_USER_ID`
+- Учёт питания: целое число в начале перед названием блюда записывается как калорийность, остальной текст — как название; сообщение без такого числа записывается с 0 ккал
+- Расчёт остатка: суточный лимит или лимит текущего приёма пищи из настроек аккаунта; часовой пояс задаётся через `APP_TIMEZONE`
+- Ответ бота: только `осталось N ккал` или `перебор на N ккал`
+- ORM и данные: Prisma 6 + общая SQLite-база Calorielly в `external-db/app.sqlite`; структура БД и миграции находятся в [бэкенде](https://github.com/mrtynnvv/api-nestjs)
+- Конфигурация окружения: локальный `.env` на основе [`.env.example`](./.env.example), привязка к аккаунту через `APP_USER_ID`
+- Деплой: PM2 через [ecosystem.config.cjs](./ecosystem.config.cjs), запуск собранного приложения из `dist/main.js`

@@ -7,26 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum DayOfWeek {
-  Mon
-  Tue
-  Wed
-  Thu
-  Fri
-  Sat
-  Sun
+model User {
+  id                  String              @id @default(cuid())
+  dailyCalorieLimit   Int?
+  mealScheduleEnabled Boolean             @default(false)
+  foodEntries         FoodEntry[]
+  mealScheduleEntries MealScheduleEntry[]
 }
 
-model User {
-  id                String         @id @default(cuid())
-  phone             String         @unique
-  passwordHash      String
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  dailyCalorieLimit Int?
-  resetDay          DayOfWeek?
-  desiredWeight     Int?
-  foodEntries       FoodEntry[]
+model MealScheduleEntry {
+  id          String @id @default(cuid())
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeMinutes Int
+  calories    Int
+
+  @@unique([userId, timeMinutes])
 }
 
 model FoodEntry {
